@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Configure Your Apartment</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<style>
+			body {
+				text-align: Left;
+				font-family: Arial, Helvetica, sans-serif;
+			}
+			h1 {
+				font-size: 20px;
+			}
+			p {
+				font-size: 15px;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Configure Your Apartment</h1>
+		<p> Workspace </p>
+		<div id="container"></div>
+		<script type="module">
+
+			// ------------------------------------------------
+			// Import Statements
+			// ------------------------------------------------
+
+			import * as THREE from 'https://unpkg.com/three@0.133.0/build/three.module.js';
+			import {OrbitControls} from 'https://unpkg.com/three@0.119.0/examples/jsm/controls/OrbitControls.js';
+			import {GUI} from 'https://unpkg.com/three@0.133.0/examples/jsm/libs/dat.gui.module.js'          // control panel GUI
+
+			// ------------------------------------------------
+			// Main code
+			// ------------------------------------------------
+
+			var camera, scene, renderer, dirLight, dirLightHeper, dirLightShadowHeper, hemiLight, hemiLightHelper;
+
+			var box_size = 100;
+			var box_geom = new THREE.BoxBufferGeometry( 600, 15, 300 );
+			var box_mat = new THREE.MeshPhongMaterial({
+				color: 0xff0000,
+				shading: THREE.FlatShading
+			});
+
+			var mouseDown = new THREE.Vector2();
+			var mouseVec = new THREE.Vector3();
+			var mousePos = new THREE.Vector3();
+
+			var boxes = {};
+
+			init();
+			animate();
+
+			// ------------------------------------------------
+			// Initialization function
+			// ------------------------------------------------
+
+			function init() {
+
+				// CAMERA AND SCENE
+
+				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );		/*FOV, aspect ratio, near, far of clipping plane*/
+				camera.position.set( 500, 500, 500 );
+				camera.up.set( 0, 0, 1 ); 		/*orientation of the camera. if camera. up. set(0,0,1) , it would mean that z-axis is going vertically up in the screen and x and y axes align accordingly.*/
+				scene = new THREE.Scene();
+
+				// SCENE BACKGROUND AND FOG
+
+				scene.background = new THREE.Color().setHSL( 0.6, 0, 1 );
+				scene.fog = new THREE.Fog( scene.background, 1, 7000 );		/*geometry further away will have a faded colour*/
+
+				// HEMISPHERE LIGHT
+				/*A light source positioned directly above the scene, with color fading from the sky color to the ground color.
+				This light cannot be used to cast shadows.
+				Three.js Lights https://threejsfundamentals.org/threejs/lessons/threejs-lights.html*/
+
+				hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );		/*HemisphereLight( skyColor, groundColor, intensity : Float )*/
+				hemiLight.color.setHSL( 0.6, 1, 0.6 );		/*The light's sky color hue saturation lightness */
+				hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
+				hemiLight.position.set( 0, 0, 300 );
+				hemiLight.up.set( 0, 0, 0 );		/*(no effect in this case) orientation of the light. if light.up.set(0,0,1) , it would mean that z-axis is going vertically up in the screen and x and y axes align accordingly.*/
+				scene.add( hemiLight );
+
+				// DIRECTIONAL LIGHT
+				/*The common use case for this is to simulate daylight*/
+
+				dirLight = new THREE.DirectionalLight( 0xffffff, 1 );		/*DirectionalLight( color : Integer, intensity : Float )*/
+				dirLight.color.setHSL( 0.1, 1, 0.95 );
+				dirLight.position.set( -0.9, -0.8, 1.1 );
+				dirLight.position.multiplyScalar( 1000 );		/*Multiplies this vector by scalar s*/
+				scene.add( dirLight );
+
+				// SCENE GRID
+
+				var gridGround = new THREE.GridHelper( 1000, 50, 0x3f3f3f, 0x3f3f3f );		/*GridHelper(size, divisions, colorCenterLine, colorGrid)*/
+				gridGround.rotation.x = Math.PI / 2;		/*orientation of the grid*/
+				scene.add( gridGround );
+
+				// GROUND
+
+				var groundGeo = new THREE.PlaneBufferGeometry( 1000, 1000 );
+				var groundMat = new THREE.MeshLambertMaterial( { color: 0xffffff } );
+				// var groundMat = new THREE.MeshStandardMaterial( { color: 'white' } )
+				groundMat.color.setHSL( 0.095, 1, 0.75 );
+				var ground = new THREE.Mesh( groundGeo, groundMat );
+				ground.receiveShadow = true;
+				scene.add( ground );
+
+				// RENDERER
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth-20, window.innerHeight-110 );
+				renderer.shadowMap.enabled = true;
+				renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
+				document.body.appendChild( renderer.domElement );
+				
+				// ORBIT CONTROL
+
+				var controls = new OrbitControls( camera, renderer.domElement );
+
+				// EVENT LISTENERS
+
+				window.addEventListener( 'resize', onWindowResize, false );
+				document.addEventListener('mousedown', onMouseDown, false);
+				document.addEventListener('mouseup', onMouseUp, false);
+			}
+
+			// ------------------------------------------------
+			// Animation loop
+			// ------------------------------------------------
+
+			function animate() {
+				requestAnimationFrame( animate );
+				renderer.render( scene, camera );
+			}
+
+			// ------------------------------------------------
+			// Event handeling functions
+			// ------------------------------------------------
+
+			// Resize browser window
+			function onWindowResize() {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+			}
+
+			// Handle mouse click events, save the screen position when mouse down
+			function onMouseDown(event) {
+				mouseDown.x = event.clientX;
+				mouseDown.y = event.clientY
+			}
+
+			// Handle mouse click events, create a box
+			function onMouseUp(event) {
+				if ((mouseDown.x !== event.clientX) || (mouseDown.y !== event.clientY)) {
+					// we are dragging, so no nothing
+					return;
+				}
+				var pos = getMouseClick3DPos(event);
+				pos.x = Math.round(pos.x / box_size) * box_size;
+				pos.y = Math.round(pos.y / box_size) * box_size;
+				var key = pos.x + '_' + pos.y;
+				if (key in boxes) {
+					scene.remove( boxes[key] );
+					delete boxes[key];
+				} else {
+					var box = new THREE.Mesh( box_geom, box_mat );
+					box.castShadow = true;
+					box.receiveShadow = true;
+					box.position.x = pos.x;
+					box.position.y = pos.y;
+					box.position.z =  box_size/2;
+					scene.add( box );
+					boxes[key] = box;
+				}
+				// console.log(boxes);
+			}
+
+			// ------------------------------------------------
+			// Helper functions
+			// ------------------------------------------------
+
+			// Get the 3d position from a 2d coordinates in screen space
+			function getMouseClick3DPos(event) {
+				mouseVec.set(
+					( event.clientX / window.innerWidth ) * 2 - 1,
+					- ( event.clientY / window.innerHeight ) * 2 + 1,
+					0	 );
+				mouseVec.unproject( camera );
+				mouseVec.sub( camera.position ).normalize();
+				var distance = - camera.position.z / mouseVec.z;
+				mousePos.copy( camera.position ).add( mouseVec.multiplyScalar( distance ) );
+				return mousePos;
+			}
+
+		</script>
+	</body>
+</html>

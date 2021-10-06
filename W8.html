@@ -1,20 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>Cube Land</title>
+		<title>Configure Your Apartment</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<link type="text/css" rel="stylesheet" href="main.css">
+		<style>
+			body {
+				text-align: Left;
+				font-family: Arial, Helvetica, sans-serif;
+			}
+			h1 {
+				font-size: 20px;
+			}
+			p {
+				font-size: 15px;
+			}
+		</style>
 	</head>
 	<body>
+		<h1>Configure Your Apartment</h1>
+		<p> Workspace </p>
+		<div id="container"></div>
 		<script type="module">
 
 			// ------------------------------------------------
 			// Import Statements
 			// ------------------------------------------------
 
-			import * as THREE from 'https://unpkg.com/three@0.119.1/build/three.module.js';
-			import { OrbitControls } from 'https://unpkg.com/three@0.119.1/examples/jsm/controls/OrbitControls.js';
+			import * as THREE from 'https://unpkg.com/three@0.133.0/build/three.module.js';
+			import {OrbitControls} from 'https://unpkg.com/three@0.119.0/examples/jsm/controls/OrbitControls.js';
+			import {GUI} from 'https://unpkg.com/three@0.133.0/examples/jsm/libs/dat.gui.module.js'          // control panel GUI
 
 			// ------------------------------------------------
 			// Main code
@@ -23,7 +38,7 @@
 			var camera, scene, renderer, dirLight, dirLightHeper, dirLightShadowHeper, hemiLight, hemiLightHelper;
 
 			var box_size = 100;
-			var box_geom = new THREE.BoxBufferGeometry( box_size, box_size, box_size );
+			var box_geom = new THREE.BoxBufferGeometry( 600, 15, 300 );
 			var box_mat = new THREE.MeshPhongMaterial({
 				color: 0xff0000,
 				shading: THREE.FlatShading
@@ -46,65 +61,42 @@
 
 				// CAMERA AND SCENE
 
-				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );		/*FOV, aspect ratio, near, far of clipping plane*/
 				camera.position.set( 500, 500, 500 );
-				camera.up.set( 0, 0, 1 );
+				camera.up.set( 0, 0, 1 ); 		/*orientation of the camera. if camera. up. set(0,0,1) , it would mean that z-axis is going vertically up in the screen and x and y axes align accordingly.*/
 				scene = new THREE.Scene();
-
-				// SCENE GRID
-
-				var gridGround = new THREE.GridHelper( 1000, 50, 0x3f3f3f, 0x3f3f3f );
-				gridGround.rotation.x = Math.PI / 2;
-				scene.add( gridGround );
 
 				// SCENE BACKGROUND AND FOG
 
 				scene.background = new THREE.Color().setHSL( 0.6, 0, 1 );
-				scene.fog = new THREE.Fog( scene.background, 1, 7000 );
+				scene.fog = new THREE.Fog( scene.background, 1, 7000 );		/*geometry further away will have a faded colour*/
 
 				// HEMISPHERE LIGHT
+				/*A light source positioned directly above the scene, with color fading from the sky color to the ground color.
+				This light cannot be used to cast shadows.
+				Three.js Lights https://threejsfundamentals.org/threejs/lessons/threejs-lights.html*/
 
-				hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
-				hemiLight.color.setHSL( 0.6, 1, 0.6 );
+				hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );		/*HemisphereLight( skyColor, groundColor, intensity : Float )*/
+				hemiLight.color.setHSL( 0.6, 1, 0.6 );		/*The light's sky color hue saturation lightness */
 				hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
 				hemiLight.position.set( 0, 0, 300 );
-				hemiLight.up.set( 0, 0, 0 );
+				hemiLight.up.set( 0, 0, 0 );		/*(no effect in this case) orientation of the light. if light.up.set(0,0,1) , it would mean that z-axis is going vertically up in the screen and x and y axes align accordingly.*/
 				scene.add( hemiLight );
 
-				// HEMISPHERE LIGHT HELPER
-
-				hemiLightHelper = new THREE.HemisphereLightHelper( hemiLight, 100 );
-				scene.add( hemiLightHelper );
-
 				// DIRECTIONAL LIGHT
+				/*The common use case for this is to simulate daylight*/
 
-				dirLight = new THREE.DirectionalLight( 0xffffff, 1 );
+				dirLight = new THREE.DirectionalLight( 0xffffff, 1 );		/*DirectionalLight( color : Integer, intensity : Float )*/
 				dirLight.color.setHSL( 0.1, 1, 0.95 );
 				dirLight.position.set( -0.9, -0.8, 1.1 );
-				dirLight.position.multiplyScalar( 1000 );
+				dirLight.position.multiplyScalar( 1000 );		/*Multiplies this vector by scalar s*/
 				scene.add( dirLight );
 
-				// DIRECTIONAL LIGHT HELPER
+				// SCENE GRID
 
-				dirLightHeper = new THREE.DirectionalLightHelper( dirLight, 100 );
-				scene.add( dirLightHeper );
-
-				// DIRECTIONAL LIGHT SHADOWS
-
-				dirLight.castShadow = true;
-				dirLight.shadow.mapSize.width = 2048;
-				dirLight.shadow.mapSize.height = 2048;
-				dirLight.shadow.camera.near = 1;
-				dirLight.shadow.camera.far = 3000;
-				dirLight.shadow.camera.left = -500;
-				dirLight.shadow.camera.bottom = -500;
-				dirLight.shadow.camera.top = 500;
-				dirLight.shadow.camera.right = 500;
-
-				// DIRECTIONAL LIGHT SHADOWS HELPER
-
-				dirLightShadowHeper = new THREE.CameraHelper( dirLight.shadow.camera );
-				scene.add( dirLightShadowHeper );
+				var gridGround = new THREE.GridHelper( 1000, 50, 0x3f3f3f, 0x3f3f3f );		/*GridHelper(size, divisions, colorCenterLine, colorGrid)*/
+				gridGround.rotation.x = Math.PI / 2;		/*orientation of the grid*/
+				scene.add( gridGround );
 
 				// GROUND
 
@@ -120,7 +112,7 @@
 
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
-				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setSize( window.innerWidth-20, window.innerHeight-110 );
 				renderer.shadowMap.enabled = true;
 				renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
 				document.body.appendChild( renderer.domElement );
